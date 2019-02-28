@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>kleflogbook</title>
+  <style>
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    form {
+      margin:50px auto;
+      width: 30%;
+      border: 3px solid #f1f1f1;
+      padding: 10px;
+    }
+
+    input[type=number], input[type=password], input[type=text]
+    {
+      width: 100%;
+      padding: 12px 20px;
+      margin: 8px 0;
+      display: inline-block;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    input[type=checkbox]
+    {
+      width: 5%;
+      padding: 12px 20px;
+      margin: 8px 0;
+      display: inline-block;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    select
+    {
+      width: 100%;
+      padding: 12px 20px;
+      margin: 8px 0;
+      display: inline-block;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      background-color: #ffffff;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 14px 20px;
+      margin: 8px 0;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    button:hover {
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <img src="{{url_for('static',filename='images/klulogo.png')}}" alt="KL LOGO" style="display: block;margin-left:auto;margin-right:auto;">
+  <center><h5 style="color:red;">{{error}}</h5></center>
+  <form method="post">
+    <select name='room' required>
+      <option value="" selected>Select Room</option>
+      {%for d in data%}
+      <option value="{{d}}">{{d}}</option>
+      {%endfor%}
+    </select>
+    <input id="pass" type="password" placeholder="Enter Password" name="psw" required>
+    <input type="checkbox" onclick="myFunction()">Show Password
+    <button type="submit">Login</button>
+  </form>
+  <script>
+    function myFunction() {
+        var x = document.getElementById("pass");
+        if (x.type === "password") {
+            x.type = "text";
+        } else {
+            x.type = "password";
+        }
+    }
+  </script>
+</body>
+</html>
