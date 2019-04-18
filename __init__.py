@@ -4,18 +4,25 @@ import random
 import string
 import socket
 
-
 app = Flask(__name__)
 client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-client.settimeout(2)
-server = ("localhost",8999)
+client.settimeout(3)
+serverIp = ("127.0.0.1",8999)
 
-def getRfid():
+def getRfid(c):
     try:
-        client.sendto(b"IdNumber",server)
-        return client.recv(10).decode()
+        client.sendto(b"RfidNumber",serverIp)
+        rfidNumber = client.recvfrom(10)[0].decode()
+        c.execute("SELECT Id from rfidmapping where Rfid='{}'".format(rfidNumber))
+        rfidData=c.fetchall()
+        if(len(rfidData)==1):
+            return rfidData[0][0]
+        else:
+            return "Invalid"
     except Exception as e:
+        print(e)
         return "NoConnection"
+
 @app.errorhandler(500)
 def servererror(e):
     return render_template("error500.html")
@@ -44,15 +51,11 @@ def settingshandler():
                             c.execute("UPDATE rooms SET password='{}' WHERE room='{}'".format(request.form['newpsw'], session.get('userid')))
                             msg = "Password successfully changed"
                             conn.commit()
-                            c.close()
-                            conn.close()
-                            return render_template("settings.html", msg=msg)
                         else:
                             msg = "Password Not matched"
-                            conn.commit()
-                            c.close()
-                            conn.close()
-                            return render_template("settings.html", msg=msg)
+                        c.close()
+                        conn.close()
+                        return render_template("settings.html", msg=msg)
                     else:
                         msg = "Old Password incorrect"
                         conn.commit()
@@ -181,23 +184,25 @@ def RfidMainhandler():
             roomnumber = session.get('room')
             if length > 0:
                 if request.method == "POST":
-                    result = getRfid()
-                    if(result!="NoConnection"):
+                    result = getRfid(c)
+                    if(result!="NoConnection" and result!="Invalid"):
                         if request.form['type']=="GetId":
-                            return render_template('mainpage.html',IdNumber=result)
+                            return render_template('rfidMain.html',IdNumber=result)
                         elif request.form['type']=="login":
-                            c.execute("INSERT INTO {}(userId,datecol,intime) VALUES({},CURDATE(),CURTIME())".format(roomnumber+"rfid",result))
-                            conn.commit()
-                            c.close()
-                            conn.close()
-                            return render_template('mainpage.html')
+                            c.execute("INSERT INTO {}(userId,datecol,intime) VALUES({},CURDATE(),CURTIME())".format(roomnumber+"rfdata",result))
                         elif request.form['type']=="logout":
-                            c.execute("UPDATE {} SET outtime=CURTIME() WHERE userId={} order by si desc limit 1".format(roomnumber+"rfid",result))
-                            conn.commit()
-                            c.close()
-                            conn.close()
-                            return render_template('mainpage.html')
-                    else:    
+                            c.execute("UPDATE {} SET outtime=CURTIME() WHERE userId={} order by si desc limit 1".format(roomnumber+"rfdata",result))
+                        conn.commit()
+                        c.close()
+                        conn.close()
+                        return render_template('rfidMain.html')
+                    elif(result=="Invalid"):
+                        c.close()
+                        conn.close()
+                        return render_template('rfidMain.html',error="Invalid Rf Card")
+                    else:
+                        c.close()
+                        conn.close()
                         return render_template('rfidMain.html',error="RFID server not connected")
                 else:
                     c.close()
@@ -229,17 +234,13 @@ def adminhandler():
                         prps = request.form['prps']
                         eqid = request.form['eqid']
                         c.execute("INSERT INTO {}(userId,purpose,equipmentid,datecol,intime) VALUES({},'{}','{}',CURDATE(),CURTIME())".format(roomnumber,sid,prps,eqid))
-                        conn.commit()
-                        c.close()
-                        conn.close()
-                        return render_template('mainpage.html')
                     else:
                         sid = request.form['sid']
                         c.execute("UPDATE {} SET outtime=CURTIME() WHERE userId={} order by si desc limit 1".format(roomnumber, sid))
-                        conn.commit()
-                        c.close()
-                        conn.close()
-                        return render_template('mainpage.html')
+                    conn.commit()
+                    c.close()
+                    conn.close()
+                    return render_template('mainpage.html')
                 else:
                     c.close()
                     conn.close()
