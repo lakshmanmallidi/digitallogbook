@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>kleflogbook-settings</title>
+  <title>kleflogbook-RfMain</title>
   <style>
 
     body {
@@ -12,37 +12,24 @@
     }
     form {
       margin:50px auto;
-      width: 30%;
+      width: 25%;
       border: 3px solid #f1f1f1;
       padding: 10px;
     }
 
-    input[type=text], input[type=password]
-    {
-      width: 100%;
-      padding: 12px 20px;
-      margin: 8px 0;
-      display: inline-block;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-    input[type=checkbox]
-    {
-      width: 5%;
-      padding: 12px 20px;
-      margin: 8px 0;
-      display: inline-block;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
     button {
-      background-color: #4CAF50;
       color: white;
       padding: 14px 20px;
       margin: 8px 0;
       border: none;
       cursor: pointer;
       width: 100%;
+    }
+    .buttonType-1{
+      background-color: #4CAF50;
+    }
+    .buttonType-2{
+      background-color: #3C5A99;
     }
 
     button:hover {
@@ -67,6 +54,7 @@
       background-color: #4CAF50;
       color: white;
     }
+
     #logo{
       float: left;
       background-color: #ffffff;
@@ -83,30 +71,13 @@
     <a href="/rfidMain.html"><img src="{{url_for('static',filename='images/rfid.png')}}" alt="Rfid"></a>
     <a href="/adminpage"><img src="{{url_for('static',filename='images/homeicon.png')}}" alt="Home"></a>
   </nav>
-  <center><h3>Change Password</h3></center>
-  <center><h5 style="color:red;">{{msg}}</h5></center>
-  <form method="post">
-    <input id="oldpass" type="password" placeholder="Enter Old Password" name="oldpsw" required>
-    <input id="newpass1" type="password" placeholder="Enter New Password" name="newpsw" required>
-    <input id="newpass2" type="password" placeholder="Confirm New Password" name="newpswconf" required>
-    <input type="checkbox" onclick="myFunction()">Show Passwords
-    <button type="submit">Change Password</button>
+  <center><h5 style="color:red;">{{error}}</h5></center>
+  <center><h5>{{IdNumber}}</h5></center>
+  <form method="post" >
+    <button class="buttonType-2" type="submit" value = "GetId" name="type">Get Rfid</button>
+    <button class="buttonType-1" type="submit" value="login" name="type">Login</button>
+    <button class="buttonType-1" type="submit" value = "logout" name="type">Logout</button>
   </form>
-  <script>
-    function myFunction() {
-        var x1 = document.getElementById("oldpass");
-        var x2 = document.getElementById("newpass1");
-        var x2 = document.getElementById("newpass2");
-        if (x1.type === "password") {
-            x1.type = "text";
-            x2.type = "text";
-            x3.type = "text";
-        } else {
-            x1.type = "password";
-            x2.type = "password";
-            x3.type = "password";
-        }
-      }
-  </script>
+
 </body>
 </html>

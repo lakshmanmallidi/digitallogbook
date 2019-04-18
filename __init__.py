@@ -2,11 +2,20 @@ from flask import Flask, render_template, redirect, request, url_for, session
 from database import connection
 import random
 import string
+import socket
 
 
 app = Flask(__name__)
+client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+client.settimeout(2)
+server = ("localhost",8999)
 
-
+def getRfid():
+    try:
+        client.sendto(b"IdNumber",server)
+        return client.recv(10).decode()
+    except Exception as e:
+        return "NoConnection"
 @app.errorhandler(500)
 def servererror(e):
     return render_template("error500.html")
@@ -61,7 +70,7 @@ def settingshandler():
         else:
             return redirect(url_for("loginhandler"))
     except Exception as e:
-        print e
+        print(e)
         return redirect(url_for("servererror"))
 
 
@@ -93,42 +102,41 @@ def printerhandler():
                             todate = "-".join(toarr[0],toarr[1],toarr[2])
                             fromdate = "-".join(fromarr[0],fromarr[1],fromarr[2])
                         if fromdate == todate:
-                            c.execute("SELECT * FROM {} WHERE datecol>='{}'".format(roomnumber, fromdate))
-                            datarr = []
-                            for rows in c.fetchall():
-                                row = []
-                                for ele in rows:
-                                    row.append(str(ele))
-                                datarr.append(tuple(row))
-                            c.close()
-                            conn.close()
-                            heading = "Student Log report of "+str(roomnumber)+" during "+str(fromdate)
-                            return render_template("printdata.html", data=datarr, heading=heading)
+                            if request.form['recordstype'] == "manual":
+                                heading = "Student Manual Log report of "+str(roomnumber)+" during "+str(fromdate)
+                                c.execute("SELECT * FROM {} WHERE datecol>='{}'".format(roomnumber, fromdate))
+                            elif request.form['recordstype'] == "rfid":
+                                heading = "Student Rfid Log report of "+str(roomnumber)+" during "+str(fromdate)
+                                c.execute("SELECT * FROM {} WHERE datecol>='{}'".format(roomnumber+"rfdata", fromdate))                                
                         else:
-                            c.execute("SELECT * FROM {} WHERE datecol>='{}' and datecol<='{}'".format(roomnumber, fromdate, todate))
-                            datarr = []
-                            for rows in c.fetchall():
-                                row = []
-                                for ele in rows:
-                                    row.append(str(ele))
-                                datarr.append(tuple(row))
-                            c.close()
-                            conn.close()
-                            heading = "Student Log report of "+str(roomnumber)+" during "+str(fromdate)+" to "+str(todate)
-                            return render_template("printdata.html", data=datarr, heading=heading)
+                            if request.form['recordstype'] == "manual":
+                                heading = "Student Manual Log report of "+str(roomnumber)+" during "+str(fromdate)+" to "+str(todate)
+                                c.execute("SELECT * FROM {} WHERE datecol>='{}' and datecol<='{}'".format(roomnumber, fromdate, todate))
+                            elif request.form['recordstype'] == "rfid":
+                                heading = "Student Rfid Log report of "+str(roomnumber)+" during "+str(fromdate)+" to "+str(todate)
+                                c.execute("SELECT * FROM {} WHERE datecol>='{}' and datecol<='{}'".format(roomnumber+"rfdata", fromdate, todate))
+                                
                     else:
                         sid = request.form['sid']
-                        c.execute("SELECT * FROM {} WHERE userId={}".format(roomnumber, sid))
-                        datarr = []
-                        for rows in c.fetchall():
-                            row = []
-                            for ele in rows:
-                                row.append(str(ele))
-                            datarr.append(tuple(row))
-                        c.close()
-                        conn.close()
-                        heading = str(roomnumber)+" log report on student "+str(sid)
-                        return render_template("printdata.html", data=datarr,heading=heading)
+                        if request.form['recordstype'] == "manual":
+                            heading = str(roomnumber)+" manual log report on student "+str(sid)
+                            c.execute("SELECT * FROM {} WHERE userId={}".format(roomnumber, sid))
+                        elif request.form['recordstype'] == "rfid":
+                            heading = str(roomnumber)+" rfid log report on student "+str(sid)
+                            c.execute("SELECT * FROM {} WHERE userId={}".format(roomnumber+"rfdata", sid))
+                            
+                    datarr = []
+                    for rows in c.fetchall():
+                        row = []
+                        for ele in rows:
+                            row.append(str(ele))
+                        datarr.append(tuple(row))
+                    c.close()
+                    conn.close()
+                    if request.form['recordstype'] == "manual":
+                        return render_template("printdata.html", data=datarr, heading=heading)
+                    elif request.form['recordstype'] == "rfid":
+                        return render_template("rfprintdata.html", data=datarr, heading=heading)
                 else:
                     c.close()
                     conn.close()
@@ -140,7 +148,7 @@ def printerhandler():
         else:
             return redirect(url_for("loginhandler"))
     except Exception as e:
-        print e
+        print(e)
         return redirect(url_for("servererror"))
 
 
@@ -159,9 +167,51 @@ def logouthandler():
         else:
             return redirect(url_for("loginhandler"))
     except Exception as e:
-        print e
+        print(e)
         return redirect(url_for("servererror"))
 
+@app.route("/rfidMain.html", methods=['GET', 'POST'])
+def RfidMainhandler():
+    try:
+        if session.get("log_in"):
+            key = session.get('key')
+            c, conn = connection()
+            c.execute("SELECT '{}' FROM sessioncode".format(key))
+            length = len(c.fetchall())
+            roomnumber = session.get('room')
+            if length > 0:
+                if request.method == "POST":
+                    result = getRfid()
+                    if(result!="NoConnection"):
+                        if request.form['type']=="GetId":
+                            return render_template('mainpage.html',IdNumber=result)
+                        elif request.form['type']=="login":
+                            c.execute("INSERT INTO {}(userId,datecol,intime) VALUES({},CURDATE(),CURTIME())".format(roomnumber+"rfid",result))
+                            conn.commit()
+                            c.close()
+                            conn.close()
+                            return render_template('mainpage.html')
+                        elif request.form['type']=="logout":
+                            c.execute("UPDATE {} SET outtime=CURTIME() WHERE userId={} order by si desc limit 1".format(roomnumber+"rfid",result))
+                            conn.commit()
+                            c.close()
+                            conn.close()
+                            return render_template('mainpage.html')
+                    else:    
+                        return render_template('rfidMain.html',error="RFID server not connected")
+                else:
+                    c.close()
+                    conn.close()
+                    return render_template('rfidMain.html')
+            else:
+                c.close()
+                conn.close()
+                return redirect(url_for("loginhandler"))
+        else:
+            return redirect(url_for("loginhandler"))
+    except Exception as e:
+        print(e)
+        return redirect("servererror")
 
 @app.route("/adminpage", methods=['GET', 'POST'])
 def adminhandler():
@@ -201,7 +251,7 @@ def adminhandler():
         else:
             return redirect(url_for("loginhandler"))
     except Exception as e:
-        print e
+        print(e)
         return redirect("servererror")
 
 
@@ -216,7 +266,7 @@ def loginhandler():
             c.execute(sql)
             origpsw = c.fetchall()[0][0]
             if(str(origpsw) == attempted_password):
-                randomkey = ''.join([random.choice(string.ascii_letters + string.digits) for n in xrange(32)])
+                randomkey = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(32)])
                 session.permanent = True
                 session['log_in'] = True
                 session['room'] = attempted_room
@@ -260,10 +310,10 @@ def loginhandler():
             conn.close()
             return render_template("login.html", error="", data=data)
     except Exception as e:
-        print e
+        print(e)
         return redirect(url_for("servererror"))
 
 
 if __name__ == "__main__":
     app.config['SECRET_KEY'] = "Your_secret_string"
-    app.run("192.168.43.104",port="80")
+    app.run()

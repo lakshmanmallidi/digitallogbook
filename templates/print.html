@@ -91,9 +91,14 @@
     <a href="/logout"><img src="{{url_for('static',filename='images/logouticon.png')}}" alt="Logout"></a>
     <a href="/settings.html"><img src="{{url_for('static',filename='images/settingsicon.png')}}" alt="settings"></a>
     <a href="/print.html"><img src="{{url_for('static',filename='images/printericon.png')}}" alt="Print"></a>
+    <a href="/rfidMain.html"><img src="{{url_for('static',filename='images/rfid.png')}}" alt="Rfid"></a>
     <a href="/adminpage"><img src="{{url_for('static',filename='images/homeicon.png')}}" alt="Home"></a>
   </nav>
   <form method="post">
+    <select id="Mode" name='recordstype'>
+      <option value="manual" selected>Manual Records</option>
+      <option value="rfid">RFID Records</option>
+    </select>
     <select id="mySelect" name='searchtype' onchange="myFunction()">
       <option value="date" selected>By Date</option>
       <option value="student">By ID Number</option>
