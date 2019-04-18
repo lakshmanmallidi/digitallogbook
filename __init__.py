@@ -6,7 +6,7 @@ import socket
 
 app = Flask(__name__)
 client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-client.settimeout(3)
+client.settimeout(4)
 serverIp = ("127.0.0.1",8999)
 
 def getRfid(c):

@@ -10,7 +10,7 @@ def serveRfids():
     while isRunning:
         try:
             data, clientAddress = server.recvfrom(10)
-            print(clientAddress)
+            print("client Hit:",clientAddress)
             if(data==b'RfidNumber'):
                 server.sendto(rfid,clientAddress)
         except Exception as e:
@@ -20,19 +20,19 @@ def serveRfids():
 rfid = b"" 
 isRunning = True
 com = input("Enter Serial com port of rfid device:")
+s = serial.Serial(com)
 threading.Thread(target=serveRfids).start()
+print("Rfid server running on server 127.0.0.1:8999.press ctrl+c to exit")
 try:
-    s = serial.Serial(com)
-    try:
-        while True:
+    while True:
+        try:
             #rfid=b"1234567891"
             rfid = s.readline()[1:11]
-            print(rfid)
-    except KeyboardInterrupt:
-        isRunning=False
-        s.close()
-except Exception as e:
-    print(e)
+            print("Detected Rf card:",rfid)
+        except Exception as e:
+            print(e)
+except KeyboardInterrupt:
     isRunning=False
+    s.close()
     
 
