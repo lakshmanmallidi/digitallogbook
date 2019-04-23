@@ -13,7 +13,7 @@ def getRfid(c):
     try:
         client.sendto(b"RfidNumber",serverIp)
         rfidNumber = client.recvfrom(10)[0].decode()
-        c.execute("SELECT Id from rfidmapping where Rfid='{}'".format(rfidNumber))
+        c.execute("SELECT id from rfid_map where rfid='{}'".format(rfidNumber))
         rfidData=c.fetchall()
         if(len(rfidData)==1):
             return rfidData[0][0]
@@ -39,33 +39,31 @@ def settingshandler():
         if session.get("log_in"):
             key = session.get('key')
             c, conn = connection()
-            c.execute("SELECT '{}' FROM sessioncode".format(key))
-            length = len(c.fetchall())
-            if length > 0:
+            c.execute("SELECT count(*) FROM session_code where code='{}'".format(key))
+            if int(c.fetchall()[0][0]) > 0:
                 if request.method == "POST":
                     oldpsw = request.form['oldpsw']
-                    c.execute("SELECT password FROM rooms where room='{}'".format(session.get('room')))
+                    c.execute("SELECT password FROM rooms WHERE id={}".format(session.get('room_id')))
                     origpsw = str(c.fetchall()[0][0])
                     if oldpsw == origpsw:
                         if request.form['newpsw'] == request.form['newpswconf']:
-                            c.execute("UPDATE rooms SET password='{}' WHERE room='{}'".format(request.form['newpsw'], session.get('userid')))
-                            msg = "Password successfully changed"
+                            c.execute("UPDATE rooms SET password='{}' WHERE id={}".format(request.form['newpsw'], session.get('room_id')))
+                            c.execute("DELETE FROM session_code WHERE code='{}'".format(key))
                             conn.commit()
                         else:
-                            msg = "Password Not matched"
+                            return render_template("settings.html", error="Password Not matched")
                         c.close()
                         conn.close()
-                        return render_template("settings.html", msg=msg)
+                        return render_template("settings.html", msg="Password successfully changed")
                     else:
-                        msg = "Old Password incorrect"
                         conn.commit()
                         c.close()
                         conn.close()
-                        return render_template("settings.html", msg=msg)
+                        return render_template("settings.html", error="Old Password incorrect")
                 else:
                     c.close()
                     conn.close()
-                    return render_template("settings.html", msg="")
+                    return render_template("settings.html")
             else:
                 c.close()
                 conn.close()
@@ -83,10 +81,11 @@ def printerhandler():
         if session.get("log_in"):
             key = session.get('key')
             c, conn = connection()
-            c.execute("SELECT '{}' FROM sessioncode".format(key))
-            length = len(c.fetchall())
-            roomnumber = session.get('room')
-            if length > 0:
+            c.execute("SELECT count(*) FROM session_code where code='{}'".format(key))
+            if int(c.fetchall()[0][0]) > 0:
+                roomId = session.get('room_id')
+                c.execute("SELECT room FROM rooms WHERE id={}".format(roomId))
+                roomNumber = c.fetchall()[0][0]
                 if request.method =="POST":
                     if request.form['searchtype'] == "date":
                         fromdate = request.form['fromdate']
@@ -106,27 +105,27 @@ def printerhandler():
                             fromdate = "-".join(fromarr[0],fromarr[1],fromarr[2])
                         if fromdate == todate:
                             if request.form['recordstype'] == "manual":
-                                heading = "Student Manual Log report of "+str(roomnumber)+" during "+str(fromdate)
-                                c.execute("SELECT * FROM {} WHERE datecol>='{}'".format(roomnumber, fromdate))
+                                heading = "Student Manual Log report of "+str(roomNumber)+" during "+str(fromdate)
+                                c.execute("SELECT * FROM manual_logs WHERE datecol>='{}' AND room_id={}".format(fromdate,roomId))
                             elif request.form['recordstype'] == "rfid":
-                                heading = "Student Rfid Log report of "+str(roomnumber)+" during "+str(fromdate)
-                                c.execute("SELECT * FROM {} WHERE datecol>='{}'".format(roomnumber+"rfdata", fromdate))                                
+                                heading = "Student Rfid Log report of "+str(roomNumber)+" during "+str(fromdate)
+                                c.execute("SELECT * FROM rfid_logs WHERE datecol>='{}' AND room_id={}".format(fromdate,roomId))                                
                         else:
                             if request.form['recordstype'] == "manual":
-                                heading = "Student Manual Log report of "+str(roomnumber)+" during "+str(fromdate)+" to "+str(todate)
-                                c.execute("SELECT * FROM {} WHERE datecol>='{}' and datecol<='{}'".format(roomnumber, fromdate, todate))
+                                heading = "Student Manual Log report of "+str(roomNumber)+" during "+str(fromdate)+" to "+str(todate)
+                                c.execute("SELECT * FROM manual_logs WHERE datecol>='{}' AND datecol<='{}' AND room_id={}".format(fromdate, todate,roomId))
                             elif request.form['recordstype'] == "rfid":
-                                heading = "Student Rfid Log report of "+str(roomnumber)+" during "+str(fromdate)+" to "+str(todate)
-                                c.execute("SELECT * FROM {} WHERE datecol>='{}' and datecol<='{}'".format(roomnumber+"rfdata", fromdate, todate))
+                                heading = "Student Rfid Log report of "+str(roomNumber)+" during "+str(fromdate)+" to "+str(todate)
+                                c.execute("SELECT * FROM rfid_logs WHERE datecol>='{}' AND datecol<='{}' AND room_id={}".format(fromdate,todate,roomId))
                                 
                     else:
-                        sid = request.form['sid']
+                        sId = request.form['sid']
                         if request.form['recordstype'] == "manual":
-                            heading = str(roomnumber)+" manual log report on student "+str(sid)
-                            c.execute("SELECT * FROM {} WHERE userId={}".format(roomnumber, sid))
+                            heading = str(roomNumber)+" manual log report on student "+str(sId)
+                            c.execute("SELECT * FROM manual_logs WHERE user_id={} AND room_id={}".format(sId,roomId))
                         elif request.form['recordstype'] == "rfid":
-                            heading = str(roomnumber)+" rfid log report on student "+str(sid)
-                            c.execute("SELECT * FROM {} WHERE userId={}".format(roomnumber+"rfdata", sid))
+                            heading = str(roomNumber)+" rfid log report on student "+str(sId)
+                            c.execute("SELECT * FROM rfid_logs WHERE user_id={} AND room_id={}".format(sId,roomId))
                             
                     datarr = []
                     for rows in c.fetchall():
@@ -161,7 +160,7 @@ def logouthandler():
         if session.get('log_in'):
             key = session.get('key')
             c, conn = connection()
-            c.execute("DELETE FROM sessioncode WHERE code='{}'".format(str(key)))
+            c.execute("DELETE FROM session_code WHERE code='{}'".format(key))
             session.clear()
             conn.commit()
             c.close()
@@ -179,24 +178,26 @@ def RfidMainhandler():
         if session.get("log_in"):
             key = session.get('key')
             c, conn = connection()
-            c.execute("SELECT '{}' FROM sessioncode".format(key))
-            length = len(c.fetchall())
-            roomnumber = session.get('room')
-            if length > 0:
+            c.execute("SELECT count(*) FROM session_code where code='{}'".format(key))
+            if int(c.fetchall()[0][0]) > 0:
+                roomId = session.get('room_id')
                 if request.method == "POST":
-                    result = getRfid(c)
-                    if(result!="NoConnection" and result!="Invalid"):
+                    sId = getRfid(c)
+                    if(sId!="NoConnection" and sId!="Invalid"):
                         if request.form['type']=="GetId":
-                            return render_template('rfidMain.html',IdNumber=result)
+                            return render_template('rfidMain.html',msg=sId)
                         elif request.form['type']=="login":
-                            c.execute("INSERT INTO {}(userId,datecol,intime) VALUES({},CURDATE(),CURTIME())".format(roomnumber+"rfdata",result))
+                            c.execute("INSERT INTO rfid_logs(user_id,room_id,datecol,in_time) VALUES({},{},CURDATE(),CURTIME())".format(sId,roomId))
                         elif request.form['type']=="logout":
-                            c.execute("UPDATE {} SET outtime=CURTIME() WHERE userId={} order by si desc limit 1".format(roomnumber+"rfdata",result))
+                            c.execute("UPDATE rfid_logs SET out_time=CURTIME() WHERE user_id={} AND room_id={} ORDER BY si DESC LIMIT 1".format(sId,roomId))
                         conn.commit()
                         c.close()
                         conn.close()
-                        return render_template('rfidMain.html')
-                    elif(result=="Invalid"):
+                        if(request.form['type']=="login"):
+                            return render_template('rfidMain.html',msg="Successfully logged in")
+                        elif(request.form['type']=="logout"):
+                            return render_template('rfidMain.html',msg="Successfully logged out")
+                    elif(sId=="Invalid"):
                         c.close()
                         conn.close()
                         return render_template('rfidMain.html',error="Invalid Rf Card")
@@ -224,23 +225,27 @@ def adminhandler():
         if session.get("log_in"):
             key = session.get('key')
             c, conn = connection()
-            c.execute("SELECT '{}' FROM sessioncode".format(key))
-            length = len(c.fetchall())
-            roomnumber = session.get('room')
-            if length > 0:
+            c.execute("SELECT count(*) FROM session_code where code='{}'".format(key))
+            if int(c.fetchall()[0][0]) > 0:
+                roomId = session.get('room_id')
                 if request.method == "POST":
                     if 'prps' in request.form:
-                        sid = request.form['sid']
+                        sId = request.form['sid']
                         prps = request.form['prps']
-                        eqid = request.form['eqid']
-                        c.execute("INSERT INTO {}(userId,purpose,equipmentid,datecol,intime) VALUES({},'{}','{}',CURDATE(),CURTIME())".format(roomnumber,sid,prps,eqid))
+                        eqId = request.form['eqid']
+                        sql = "INSERT INTO manual_logs(user_id,room_id,purpose,equipment_id,datecol,in_time) VALUES(%s,%s,%s,%s,CURDATE(),CURTIME())"
+                        c.execute(sql,(sId,roomId,prps,eqId))
                     else:
-                        sid = request.form['sid']
-                        c.execute("UPDATE {} SET outtime=CURTIME() WHERE userId={} order by si desc limit 1".format(roomnumber, sid))
+                        sId = request.form['sid']
+                        sql= "UPDATE manual_logs SET out_time=CURTIME() WHERE user_id=%s AND room_id=%s ORDER BY si DESC LIMIT 1"
+                        c.execute(sql,(sId,roomId))
                     conn.commit()
                     c.close()
                     conn.close()
-                    return render_template('mainpage.html')
+                    if 'prps' in request.form:
+                        return render_template('mainpage.html',msg="Successfully logged in")
+                    else:
+                        return render_template('mainpage.html',msg="Successfully logged out")
                 else:
                     c.close()
                     conn.close()
@@ -263,21 +268,30 @@ def loginhandler():
         if request.method == 'POST':
             attempted_room = request.form['room']
             attempted_password = request.form['psw']
-            sql = "SELECT password FROM rooms WHERE room='{}'".format(attempted_room)
-            c.execute(sql)
-            origpsw = c.fetchall()[0][0]
-            if(str(origpsw) == attempted_password):
-                randomkey = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(32)])
-                session.permanent = True
-                session['log_in'] = True
-                session['room'] = attempted_room
-                session['key'] = randomkey
-                sql = "INSERT INTO sessioncode values('{}')".format(randomkey)
-                c.execute(sql)
-                conn.commit()
-                c.close()
-                conn.close()
-                return redirect(url_for("adminhandler"))
+            c.execute("SELECT id,password FROM rooms WHERE room='{}'".format(attempted_room))
+            roomData = c.fetchall()
+            if(len(roomData)==1):
+                origpsw = roomData[0][1]
+                if(str(origpsw) == attempted_password):
+                    randomkey = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(32)])
+                    session.permanent = True
+                    session['log_in'] = True
+                    session['room_id'] = roomData[0][0] 
+                    session['key'] = randomkey
+                    sql = "INSERT INTO session_code(code) values('{}')".format(randomkey)
+                    c.execute(sql)
+                    conn.commit()
+                    c.close()
+                    conn.close()
+                    return redirect(url_for("adminhandler"))
+                else:
+                    c.execute("SELECT room FROM rooms")
+                    data = []
+                    for row in c.fetchall():
+                        data.append(row[0])
+                    c.close()
+                    conn.close()
+                    return render_template("login.html", error="Username or password is incorrect", data=data)
             else:
                 c.execute("SELECT room FROM rooms")
                 data = []
@@ -285,12 +299,11 @@ def loginhandler():
                     data.append(row[0])
                 c.close()
                 conn.close()
-                return render_template("login.html", error="Username or password is incorrect", data=data)
+                return render_template("login.html", error="No room selected", data=data)
         elif(session.get("log_in")):
             key = session.get('key')
-            c.execute("SELECT '{}' FROM sessioncode".format(key))
-            length = len(c.fetchall())
-            if length > 0:
+            c.execute("SELECT count(*) FROM session_code where code='{}'".format(key))
+            if int(c.fetchall()[0][0]) > 0:
                 c.close()
                 conn.close()
                 return redirect(url_for("adminhandler"))

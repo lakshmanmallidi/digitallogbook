@@ -84,11 +84,12 @@
     <a href="/adminpage"><img src="{{url_for('static',filename='images/homeicon.png')}}" alt="Home"></a>
   </nav>
   <center><h3>Change Password</h3></center>
-  <center><h5 style="color:red;">{{msg}}</h5></center>
+  <center><h5 id="messageLabel" style="color:green;">{{msg}}</h5></center>
+  <center><h5 id="errorLabel" style="color:red;">{{error}}</h5></center>
   <form method="post">
-    <input id="oldpass" type="password" placeholder="Enter Old Password" name="oldpsw" required>
-    <input id="newpass1" type="password" placeholder="Enter New Password" name="newpsw" required>
-    <input id="newpass2" type="password" placeholder="Confirm New Password" name="newpswconf" required>
+    <input id="oldpass" type="password" placeholder="Enter Old Password" name="oldpsw" onclick="resetLabels()" required>
+    <input id="newpass1" type="password" placeholder="Enter New Password" name="newpsw" onclick="resetLabels()" required>
+    <input id="newpass2" type="password" placeholder="Confirm New Password" name="newpswconf" onclick="resetLabels()" required>
     <input type="checkbox" onclick="myFunction()">Show Passwords
     <button type="submit">Change Password</button>
   </form>
@@ -96,7 +97,7 @@
     function myFunction() {
         var x1 = document.getElementById("oldpass");
         var x2 = document.getElementById("newpass1");
-        var x2 = document.getElementById("newpass2");
+        var x3 = document.getElementById("newpass2");
         if (x1.type === "password") {
             x1.type = "text";
             x2.type = "text";
@@ -106,6 +107,10 @@
             x2.type = "password";
             x3.type = "password";
         }
+      }
+      function resetLabels() {
+        document.getElementById("messageLabel").innerHTML = "";
+        document.getElementById("errorLabel").innerHTML = "";
       }
   </script>
 </body>

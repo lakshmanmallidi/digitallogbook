@@ -71,8 +71,8 @@
     <a href="/rfidMain.html"><img src="{{url_for('static',filename='images/rfid.png')}}" alt="Rfid"></a>
     <a href="/adminpage"><img src="{{url_for('static',filename='images/homeicon.png')}}" alt="Home"></a>
   </nav>
+  <center><h5 style="color:green;">{{msg}}</h5></center>
   <center><h5 style="color:red;">{{error}}</h5></center>
-  <center><h5>{{IdNumber}}</h5></center>
   <form method="post" >
     <button class="buttonType-2" type="submit" value = "GetId" name="type">Get Rfid</button>
     <button class="buttonType-1" type="submit" value="login" name="type">Login</button>

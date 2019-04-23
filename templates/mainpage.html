@@ -75,16 +75,23 @@
     <a href="/rfidMain.html"><img src="{{url_for('static',filename='images/rfid.png')}}" alt="Rfid"></a>
     <a href="/adminpage"><img src="{{url_for('static',filename='images/homeicon.png')}}" alt="Home"></a>
   </nav>
-  <center><h5 style="color:red;">{{error}}</h5></center>
+  <center><h5 id="messageLabel" style="color:green;">{{msg}}</h5></center>
+  <center><h5 id="errorLabel" style="color:red;">{{error}}</h5></center>
   <form method="post">
-    <input type="number" placeholder="Enter ID Number" name="sid" required>
-    <input type="text" placeholder="Enter Purpose" name="prps" required>
-    <input type="text" placeholder="Enter Equipment Id" name="eqid">
+    <input type="number" placeholder="Enter ID Number" name="sid" onfocus="resetLabels()" required>
+    <input type="text" placeholder="Enter Purpose" name="prps" onfocus="resetLabels()" required>
+    <input type="text" placeholder="Enter Equipment Id" name="eqid" onfocus="resetLabels()">
     <button type="submit" value="login">Login</button>
   </form>
   <form method="post">
-    <input type="number" placeholder="Enter ID Number" name="sid" required>
+    <input type="number" placeholder="Enter ID Number" name="sid" onfocus="resetLabels()" required>
     <button type="submit" value = "logout">Logout</button>
   </form>
+  <script>
+    function resetLabels() {
+      document.getElementById("messageLabel").innerHTML = "";
+      document.getElementById("errorLabel").innerHTML = "";
+    }
+  </script>
 </body>
 </html>
